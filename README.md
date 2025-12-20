@@ -51,7 +51,7 @@ python sync.py
 ### 自动同步（部署到树莓派上或者其他 Linux 设备）
 
 > [!NOTE]  
-> Docker 镜像目前支持 arm64。在树莓派5上测试过。
+> Docker 镜像目前支持 arm64 和 amd64。在树莓派5上测试过。
 
 创建一个`docker-compose.yml`配置文件, 内容如下:  
   
