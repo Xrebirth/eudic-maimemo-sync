@@ -6,11 +6,19 @@ RUN apt-get update && apt-get install -y curl procps && rm -rf /var/lib/apt/list
 
 # Latest releases available at https://github.com/aptible/supercronic/releases
 # Remove the cron installation and add Supercronic
-ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.2.41/supercronic-linux-arm64 \
-    SUPERCRONIC_SHA1SUM=44e10e33e8d98b1d1522f6719f15fb9469786ff0 \
-    SUPERCRONIC=supercronic-linux-arm64
-
-RUN curl -fsSLO "$SUPERCRONIC_URL" \
+ARG TARGETARCH
+RUN if [ "$TARGETARCH" = "amd64" ]; then \
+      SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.2.41/supercronic-linux-amd64 \
+      && SUPERCRONIC_SHA1SUM=f70ad28d0d739a96dc9e2087ae370c257e79b8d7 \
+      && SUPERCRONIC=supercronic-linux-amd64; \
+    elif [ "$TARGETARCH" = "arm64" ]; then \
+      SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.2.41/supercronic-linux-arm64 \
+      && SUPERCRONIC_SHA1SUM=44e10e33e8d98b1d1522f6719f15fb9469786ff0 \
+      && SUPERCRONIC=supercronic-linux-arm64; \
+    else \
+      echo "Error: Unsupported architecture $TARGETARCH" && exit 1; \
+    fi \
+ && curl -fsSLO "$SUPERCRONIC_URL" \
  && echo "${SUPERCRONIC_SHA1SUM}  ${SUPERCRONIC}" | sha1sum -c - \
  && chmod +x "$SUPERCRONIC" \
  && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
