@@ -5,6 +5,22 @@ from collections import defaultdict
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 
+# -------------------------- 替换成可用的 Windows 右下角通知 --------------------------
+from win10toast import ToastNotifier
+toaster = ToastNotifier()
+
+def show_windows_notification(title, message, is_success=True):
+    """
+    显示 Windows 右下角悬浮通知（不阻塞、不弹窗、最清爽）
+    """
+    toaster.show_toast(
+        title=title,
+        msg=message,
+        duration=8,
+        threaded=True  # 不阻塞程序运行
+    )
+
+# -------------------------- 原有功能代码 --------------------------
 def fetch_word_list():
     """获取欧路词典生词本"""
     load_dotenv()
@@ -83,7 +99,7 @@ def update_maimemo_notepad(content):
     }
     
     try:
-        # 发送 POST 请求
+        # 发送 POST 请求（注：墨墨更新生词本应该用 PUT 方法？需确认API文档）
         response = requests.post(url, json=payload, headers=headers)
         
         # 检查响应
@@ -125,10 +141,28 @@ def main():
         
         if response and response.get('success'):
             print("[SUCCESS] 同步完成!")
+            # 同步成功通知
+            show_windows_notification(
+                title="单词同步成功",
+                message=f"成功获取 {word_count} 个欧路单词，并同步到墨墨背单词！",
+                is_success=True
+            )
         else:
             print("[ERROR] 同步失败!")
+            # 同步失败通知
+            show_windows_notification(
+                title="单词同步失败",
+                message="更新墨墨生词本失败，请检查API密钥、生词本ID或网络！",
+                is_success=False
+            )
     else:
         print("[ERROR] 未获取到欧路词典单词，同步终止")
+        # 未获取到单词通知
+        show_windows_notification(
+            title="单词同步失败",
+            message="未获取到欧路词典单词，同步终止！请检查欧路API密钥或分类ID。",
+            is_success=False
+        )
     
     end_time = datetime.now()
     duration = (end_time - start_time).total_seconds()

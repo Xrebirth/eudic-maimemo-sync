@@ -2,6 +2,10 @@
 
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 
+## 修改：
+
+由于我是在Windows部署+计划任务定时所以额外加了Windows通知功能（需要注意额外安装 win10toast 这个包）
+
 ## 项目介绍
 
 将[欧路词典](https://www.eudic.net/v4/en/app/eudic)生词本同步到[墨墨背单词](https://www.maimemo.com/)云词库的 Python 工具。该脚本可以将你在欧路词典查询的单词（如果你设置了查询自动添加到生词本），同步到墨墨背单词的词库中。
