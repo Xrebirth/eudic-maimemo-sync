@@ -2,7 +2,9 @@
 
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
 
+## 修改：
 
+由于我是在Windows部署+计划任务定时所以额外加了Windows通知功能（需要注意额外安装 win10toast 这个包）
 
 ## 项目介绍
 
