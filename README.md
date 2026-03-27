@@ -4,7 +4,8 @@
 
 ## 修改：
 
-由于我是在Windows部署+计划任务定时所以额外加了Windows通知功能（需要注意额外安装 win10toast 这个包）
+由于我是在Windows部署+计划任务定时所以额外加了Windows通知功能（需要注意额外安装 plyer 这个包）
+新增联动加入至obsidian生词本功能，需obsidian安装 `HiWords` 配合一起使用
 
 ## 项目介绍
 

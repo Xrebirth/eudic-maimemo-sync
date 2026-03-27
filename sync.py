@@ -1,24 +1,138 @@
+# ====================== 配置区（请根据实际情况修改） ======================
+# 需要运行的Obsidian同步脚本路径（支持相对/绝对路径）
+OBSIDIAN_SYNC_SCRIPT_PATH = r"C:\Program Files\DevelopmentTools\Automation\eudic-maimemo-sync\sync obsidian.py"
+# =========================================================================
+
 import os
 import requests
 import json
+import subprocess
+import sys
 from collections import defaultdict
 from dotenv import load_dotenv
 from datetime import datetime, timezone, timedelta
 
-# -------------------------- 替换成可用的 Windows 右下角通知 --------------------------
-from win10toast import ToastNotifier
-toaster = ToastNotifier()
-
+# -------------------------- 使用plyer实现Windows通知（无兼容问题） --------------------------
 def show_windows_notification(title, message, is_success=True):
     """
-    显示 Windows 右下角悬浮通知（不阻塞、不弹窗、最清爽）
+    使用plyer实现Windows系统通知（彻底解决WPARAM/LRESULT兼容问题）
+    :param title: 通知标题
+    :param message: 通知内容
+    :param is_success: 是否为成功类通知（仅用于标识，不影响功能）
     """
-    toaster.show_toast(
-        title=title,
-        msg=message,
-        duration=8,
-        threaded=True  # 不阻塞程序运行
-    )
+    try:
+        # 优先使用plyer库（跨平台、更稳定）
+        from plyer import notification
+        notification.notify(
+            title=title,
+            message=message,
+            app_name="欧路-墨墨单词同步工具",  # 通知栏显示的应用名称
+            timeout=8,                          # 通知显示时长（秒）
+            ticker="单词同步提醒"               # 通知滚动提示（可选）
+        )
+    except ImportError:
+        # 若缺少plyer，自动安装并重试
+        print("\n[INFO] 正在安装plyer依赖库...")
+        os.system(f"{sys.executable} -m pip install plyer -q")
+        try:
+            from plyer import notification
+            notification.notify(
+                title=title,
+                message=message,
+                app_name="欧路-墨墨单词同步工具",
+                timeout=8
+            )
+        except Exception as e:
+            # 兜底：控制台打印通知内容
+            print(f"\n[通知] {title}：{message}")
+            print(f"[WARNING] 通知弹窗失败：{e}")
+    except Exception as e:
+        # 捕获其他异常，保证程序不崩溃
+        print(f"\n[ERROR] 通知展示失败：{e}")
+        print(f"[通知] {title}：{message}")
+
+# -------------------------- 交互式选择函数 --------------------------
+def ask_run_obsidian_sync():
+    """
+    交互式选择是否运行配置的Obsidian同步脚本
+    返回：True（运行）/ False（不运行）
+    """
+    print("\n" + "="*50)
+    # 循环直到输入有效
+    while True:
+        choice = input(f"是否将同步的生词本添加到Obsidian中？(Y/N): ").strip().upper()
+        if choice in ["Y", "YES"]:
+            return True
+        elif choice in ["N", "NO"]:
+            return False
+        else:
+            print("⚠️ 输入无效！请输入 Y (是) 或 N (否)")
+
+def run_obsidian_sync_script():
+    """
+    运行配置区指定的Obsidian同步脚本，修复编码问题，兼容中文输出
+    """
+    script_path = OBSIDIAN_SYNC_SCRIPT_PATH  # 从配置区读取路径
+    # 检查脚本是否存在
+    if not os.path.exists(script_path):
+        error_msg = f"未找到脚本文件：{script_path}"
+        print(f"[ERROR] {error_msg}")
+        show_windows_notification(
+            title="Obsidian同步失败",
+            message=error_msg,
+            is_success=False
+        )
+        return False
+    
+    try:
+        print(f"[INFO] 开始运行 {script_path} 脚本...")
+        # 修复编码问题：使用gbk解码（Windows默认编码），忽略无法解码的字符
+        result = subprocess.run(
+            [sys.executable, script_path],
+            capture_output=True,
+            text=True,
+            encoding="gbk",  # 替换utf-8为gbk，兼容Windows中文输出
+            errors="ignore"  # 忽略无法解码的字符，避免崩溃
+        )
+        
+        # 打印脚本输出（清理空行）
+        if result.stdout:
+            stdout_clean = "\n".join([line for line in result.stdout.splitlines() if line.strip()])
+            if stdout_clean:
+                print(f"[INFO] {script_path} 输出：\n{stdout_clean}")
+        if result.stderr:
+            stderr_clean = "\n".join([line for line in result.stderr.splitlines() if line.strip()])
+            if stderr_clean:
+                print(f"[WARNING] {script_path} 运行警告：\n{stderr_clean}")
+        
+        # 仅以返回码判断是否成功（忽略通知库的警告）
+        if result.returncode == 0:
+            success_msg = f"{script_path} 运行完成！"
+            print(f"[SUCCESS] {success_msg}")
+            show_windows_notification(
+                title="Obsidian同步成功",
+                message="生词本已成功添加到Obsidian Canvas！",
+                is_success=True
+            )
+            return True
+        else:
+            error_msg = f"{script_path} 运行失败（返回码：{result.returncode}）"
+            print(f"[ERROR] {error_msg}")
+            show_windows_notification(
+                title="Obsidian同步失败",
+                message=error_msg,
+                is_success=False
+            )
+            return False
+    except Exception as e:
+        error_msg = f"运行 {script_path} 时发生异常：{str(e)}"
+        print(f"[ERROR] {error_msg}")
+        show_windows_notification(
+            title="Obsidian同步失败",
+            message=error_msg,
+            is_success=False
+        )
+        return False
 
 # -------------------------- 原有功能代码 --------------------------
 def fetch_word_list():
@@ -140,15 +254,27 @@ def main():
         response = update_maimemo_notepad(output_string)
         
         if response and response.get('success'):
-            print("[SUCCESS] 同步完成!")
+            print("[SUCCESS] 墨墨背单词同步完成!")
             # 同步成功通知
             show_windows_notification(
                 title="单词同步成功",
                 message=f"成功获取 {word_count} 个欧路单词，并同步到墨墨背单词！",
                 is_success=True
             )
+            
+            # 询问是否运行Obsidian同步
+            if ask_run_obsidian_sync():
+                run_obsidian_sync_script()
+            else:
+                print("[INFO] 跳过Obsidian同步流程")
+                show_windows_notification(
+                    title="Obsidian同步已跳过",
+                    message="你选择不将生词本添加到Obsidian中",
+                    is_success=True
+                )
+            
         else:
-            print("[ERROR] 同步失败!")
+            print("[ERROR] 墨墨背单词同步失败!")
             # 同步失败通知
             show_windows_notification(
                 title="单词同步失败",
@@ -166,7 +292,7 @@ def main():
     
     end_time = datetime.now()
     duration = (end_time - start_time).total_seconds()
-    print(f"[INFO] 同步结束 - {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"\n[INFO] 同步结束 - {end_time.strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"[INFO] 总耗时: {duration:.2f} 秒")
 
 if __name__ == "__main__":
